@@ -1,6 +1,6 @@
 type: charm
-name: loadbalancer-k8s-operator
-title: Kubernetes LoadBalancer service charm
+name: loadbalancer-k8s
+title: Kubernetes LoadBalancer service
 summary: A simple LoadBalancer charm for Kubernetes services
 description: |
   This charm deploys a simple LoadBalancer service for Kubernetes pods
