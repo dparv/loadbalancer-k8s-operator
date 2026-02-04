@@ -1,5 +1,5 @@
 type: charm
-name: charm-k8s-loadbalancer
+name: loadbalancer-k8s-operator
 title: Kubernetes LoadBalancer service charm
 summary: A simple LoadBalancer charm for Kubernetes services
 description: |

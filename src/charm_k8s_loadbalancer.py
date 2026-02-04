@@ -14,12 +14,6 @@ import logging
 from dataclasses import dataclass
 import re
 
-from lightkube import Client
-from lightkube.core.exceptions import ApiError
-from lightkube.models.core_v1 import ServicePort, ServiceSpec
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Service
-
 logger = logging.getLogger(__name__)
 
 
@@ -145,6 +139,15 @@ class ServiceConfig:
 
 
 def _build_service(cfg: ServiceConfig) -> Service:
+    try:
+        from lightkube.models.core_v1 import ServicePort, ServiceSpec
+        from lightkube.models.meta_v1 import ObjectMeta
+        from lightkube.resources.core_v1 import Service
+    except ModuleNotFoundError as e:  # pragma: nocover
+        raise ConfigError(
+            "missing runtime dependency 'lightkube' (repack the charm after updating uv.lock)"
+        ) from e
+
     return Service(
         metadata=ObjectMeta(
             name=cfg.name,
@@ -197,6 +200,14 @@ def ensure_loadbalancer_service(
     )
     svc = _build_service(cfg)
 
+    try:
+        from lightkube import Client
+        from lightkube.core.exceptions import ApiError
+    except ModuleNotFoundError as e:  # pragma: nocover
+        raise ConfigError(
+            "missing runtime dependency 'lightkube' (repack the charm after updating uv.lock)"
+        ) from e
+
     client = Client(namespace=namespace, field_manager=app_name)
     try:
         client.create(svc)
@@ -210,6 +221,15 @@ def ensure_loadbalancer_service(
 
 def delete_loadbalancer_service(*, app_name: str, namespace: str) -> None:
     """Delete the Service if it exists."""
+    try:
+        from lightkube import Client
+        from lightkube.core.exceptions import ApiError
+        from lightkube.resources.core_v1 import Service
+    except ModuleNotFoundError as e:  # pragma: nocover
+        raise ConfigError(
+            "missing runtime dependency 'lightkube' (repack the charm after updating uv.lock)"
+        ) from e
+
     name = f"{app_name}-lb"
     client = Client(namespace=namespace, field_manager=app_name)
     try:
