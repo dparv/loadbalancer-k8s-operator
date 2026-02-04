@@ -1,6 +1,6 @@
 type: charm
 name: charm-k8s-loadbalancer
-title: A simple Kubernetes LoadBalancer service charm
+title: Kubernetes LoadBalancer service charm
 summary: A simple LoadBalancer charm for Kubernetes services
 description: |
   This charm deploys a simple LoadBalancer service for Kubernetes pods
@@ -23,25 +23,31 @@ config:
     selector:
       description: |
         The kubernetes selector to identify the pods to load balance.
-        default: "app.kubernetes.io/name=myapp"
       type: string
+      default: "app.kubernetes.io/name=myapp"
     target-port:
       description: |
         The port on the pods to load balance to.
-        default: 80
-      type: integer
+      type: int
+      default: 80
     lb-port:
       description: |
         The port to expose the load balancer on.
-        default: 80
-      type: integer
+      type: int
+      default: 80
+    loadbalancer-annotations:
+      description: |
+        Comma-separated Kubernetes Service annotations applied to the LoadBalancer.
+        Format: "key1=value1,key2=value2".
+      type: string
+      default: ""
 
 containers:
   hello-world:
-    resource: dummy-image
+    resource: image
 
 resources:
-  dummy-image:
+  image:
     type: oci-image
-    description: Dummy hello-world image.
-    upstream-source: docker.io/hello-world:latest
+    description: Dummy pause image (keeps the pod running).
+    upstream-source: registry.k8s.io/pause:3.9

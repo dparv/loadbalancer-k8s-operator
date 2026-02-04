@@ -13,7 +13,15 @@ Use links instead.
 Charmhub package name: charm-k8s-loadbalancer
 More information: https://charmhub.io/charm-k8s-loadbalancer
 
-Describe your charm in one or two sentences.
+This charm creates (and keeps in sync) a Kubernetes `Service` of type `LoadBalancer`.
+It does not manage any application workload; the service selector is configured to
+point at existing pods.
+
+## Configuration
+
+- `selector`: label selector for the backend pods (e.g. `app=myapp,tier=backend` or JSON)
+- `target-port`: port on the selected pods
+- `lb-port`: external port exposed by the LoadBalancer
 
 ## Other resources
 

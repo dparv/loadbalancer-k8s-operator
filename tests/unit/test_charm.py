@@ -1,91 +1,103 @@
-# Copyright 2026 dparv
-# See LICENSE file for licensing details.
-#
-# To learn more about testing, see https://documentation.ubuntu.com/ops/latest/explanation/testing/
+"""Unit tests for the service-only load balancer charm."""
 
 import pytest
-from ops import pebble, testing
+from ops import testing
 
-from charm import SERVICE_NAME, CharmK8SLoadbalancerCharm
+from charm import CharmK8SLoadbalancerCharm
 
-CHECK_NAME = "service-ready"  # Name of Pebble check in the mock workload container.
 
-layer = pebble.Layer(
-    {
-        "services": {
-            SERVICE_NAME: {
-                "override": "replace",
-                "command": "/bin/foo",  # The specific command isn't important for unit tests.
-                "startup": "enabled",
+def test_non_leader_waits_for_reconcile(monkeypatch: pytest.MonkeyPatch):
+    called = {"count": 0}
+
+    def _ensure(*args, **kwargs):
+        called["count"] += 1
+
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", _ensure)
+
+    ctx = testing.Context(CharmK8SLoadbalancerCharm)
+    state_in = testing.State(leader=False)
+
+    state_out = ctx.run(ctx.on.config_changed(), state_in)
+
+    assert called["count"] == 0
+    assert isinstance(state_out.unit_status, testing.WaitingStatus)
+
+
+def test_leader_reconciles_service(monkeypatch: pytest.MonkeyPatch):
+    captured = {}
+
+    def _ensure(*, app_name, namespace, selector, target_port, lb_port, annotations=None):
+        captured.update(
+            {
+                "app_name": app_name,
+                "namespace": namespace,
+                "selector": selector,
+                "target_port": target_port,
+                "lb_port": lb_port,
+                "annotations": annotations,
             }
+        )
+
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", _ensure)
+
+    ctx = testing.Context(CharmK8SLoadbalancerCharm)
+    state_in = testing.State(
+        leader=True,
+        config={
+            "selector": "app.kubernetes.io/name=myapp",
+            "target-port": 8080,
+            "lb-port": 80,
+            "loadbalancer-annotations": "service.beta.kubernetes.io/aws-load-balancer-type=nlb",
         },
-        "checks": {
-            CHECK_NAME: {
-                "override": "replace",
-                "level": "ready",
-                "threshold": 3,
-                "startup": "enabled",
-                "http": {
-                    "url": "http://localhost:8000/version",  # The specific URL isn't important.
-                },
-            }
-        },
+    )
+
+    state_out = ctx.run(ctx.on.config_changed(), state_in)
+
+    assert captured["selector"] == {"app.kubernetes.io/name": "myapp"}
+    assert captured["target_port"] == 8080
+    assert captured["lb_port"] == 80
+    assert captured["annotations"] == {
+        "service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
     }
-)
+    assert isinstance(state_out.unit_status, testing.ActiveStatus)
 
 
-def mock_get_version():
-    """Get a mock version string without executing the workload code."""
-    return "1.0.0"
+def test_invalid_selector_blocks(monkeypatch: pytest.MonkeyPatch):
+    def _ensure(*args, **kwargs):
+        raise AssertionError("ensure_loadbalancer_service should not be called")
 
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", _ensure)
 
-def test_pebble_ready(monkeypatch: pytest.MonkeyPatch):
-    """Test that the charm has the correct state after handling the pebble-ready event."""
-    # Arrange:
     ctx = testing.Context(CharmK8SLoadbalancerCharm)
-    check_in = testing.CheckInfo(
-        CHECK_NAME,
-        level=pebble.CheckLevel.READY,
-        status=pebble.CheckStatus.UP,  # Simulate the Pebble check passing.
+    state_in = testing.State(
+        leader=True,
+        config={
+            "selector": "not-a-kv",
+            "target-port": 80,
+            "lb-port": 80,
+        },
     )
-    container_in = testing.Container(
-        "some-container",
-        can_connect=True,
-        layers={"base": layer},
-        service_statuses={SERVICE_NAME: pebble.ServiceStatus.INACTIVE},
-        check_infos={check_in},
-    )
-    state_in = testing.State(containers={container_in})
-    monkeypatch.setattr("charm.charm_k8s_loadbalancer.get_version", mock_get_version)
 
-    # Act:
-    state_out = ctx.run(ctx.on.pebble_ready(container_in), state_in)
-
-    # Assert:
-    container_out = state_out.get_container(container_in.name)
-    assert container_out.service_statuses[SERVICE_NAME] == pebble.ServiceStatus.ACTIVE
-    assert state_out.workload_version is not None
-    assert state_out.unit_status == testing.ActiveStatus()
+    state_out = ctx.run(ctx.on.config_changed(), state_in)
+    assert isinstance(state_out.unit_status, testing.BlockedStatus)
 
 
-def test_pebble_ready_service_not_ready():
-    """Test that the charm raises an error if the workload isn't ready after Pebble starts it."""
-    # Arrange:
+def test_invalid_annotation_key_blocks(monkeypatch: pytest.MonkeyPatch):
+    def _ensure(*args, **kwargs):
+        raise AssertionError("ensure_loadbalancer_service should not be called")
+
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", _ensure)
+
     ctx = testing.Context(CharmK8SLoadbalancerCharm)
-    check_in = testing.CheckInfo(
-        CHECK_NAME,
-        level=pebble.CheckLevel.READY,
-        status=pebble.CheckStatus.DOWN,  # Simulate the Pebble check failing.
+    state_in = testing.State(
+        leader=True,
+        config={
+            "selector": "app=myapp",
+            "target-port": 80,
+            "lb-port": 80,
+            "loadbalancer-annotations": "not a key=value",
+        },
     )
-    container_in = testing.Container(
-        "some-container",
-        can_connect=True,
-        layers={"base": layer},
-        service_statuses={SERVICE_NAME: pebble.ServiceStatus.INACTIVE},
-        check_infos={check_in},
-    )
-    state_in = testing.State(containers={container_in})
 
-    # Act & assert:
-    with pytest.raises(testing.errors.UncaughtCharmError):
-        ctx.run(ctx.on.pebble_ready(container_in), state_in)
+    state_out = ctx.run(ctx.on.config_changed(), state_in)
+    assert isinstance(state_out.unit_status, testing.BlockedStatus)

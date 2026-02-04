@@ -8,7 +8,6 @@ import logging
 import pathlib
 
 import jubilant
-import pytest
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -18,18 +17,7 @@ METADATA = yaml.safe_load(pathlib.Path("charmcraft.yaml").read_text())
 
 def test_deploy(charm: pathlib.Path, juju: jubilant.Juju):
     """Deploy the charm under test."""
-    resources = {
-        "some-container-image": METADATA["resources"]["some-container-image"]["upstream-source"]
-    }
+    resources = {"image": METADATA["resources"]["image"]["upstream-source"]}
     juju.deploy(charm.resolve(), app="charm-k8s-loadbalancer", resources=resources)
     juju.wait(jubilant.all_active)
 
-
-# If you implement charm_k8s_loadbalancer.get_version in the charm source,
-# remove the @pytest.mark.skip line to enable this test.
-# Alternatively, remove this test if you don't need it.
-@pytest.mark.skip(reason="charm_k8s_loadbalancer.get_version is not implemented")
-def test_workload_version_is_set(charm: pathlib.Path, juju: jubilant.Juju):
-    """Check that the correct version of the workload is running."""
-    version = juju.status().apps["charm-k8s-loadbalancer"].version
-    assert version == "3.14"  # Replace 3.14 by the expected version of the workload.
