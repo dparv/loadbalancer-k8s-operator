@@ -16,7 +16,14 @@ Deploy:
 Deploy one charm per service, don't deploy multiple units.
 
 ```bash
-juju deploy loadbalancer-k8s my-service-loadbalancer --resource image=registry.k8s.io/pause:3.9
+juju deploy loadbalancer-k8s my-service-loadbalancer --resource image=registry.k8s.io/pause:3.9 --trust
+```
+
+Example deploy to expose `minio` on port 80:
+
+```bash
+juju deploy minio
+juju deploy loadbalancer-k8s minio-loadbalancer --resource image=registry.k8s.io/pause:3.9 --config selector="app.kubernetes.io/name=minio" --config target-port=9000 --config lb-port=80 --trust
 ```
 
 Configure it to point at your own pods:
