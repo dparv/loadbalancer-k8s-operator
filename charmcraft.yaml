@@ -1,0 +1,47 @@
+type: charm
+name: charm-k8s-loadbalancer
+title: A simple Kubernetes LoadBalancer service charm
+summary: A simple LoadBalancer charm for Kubernetes services
+description: |
+  This charm deploys a simple LoadBalancer service for Kubernetes pods
+  matching a specified selector. It allows configuration of the target port
+  on the pods and the port to expose the load balancer on.
+
+base: ubuntu@24.04
+platforms:
+  amd64:
+
+parts:
+  charm:
+    plugin: uv
+    source: .
+    build-snaps:
+      - astral-uv
+
+config:
+  options:
+    selector:
+      description: |
+        The kubernetes selector to identify the pods to load balance.
+        default: "app.kubernetes.io/name=myapp"
+      type: string
+    target-port:
+      description: |
+        The port on the pods to load balance to.
+        default: 80
+      type: integer
+    lb-port:
+      description: |
+        The port to expose the load balancer on.
+        default: 80
+      type: integer
+
+containers:
+  hello-world:
+    resource: dummy-image
+
+resources:
+  dummy-image:
+    type: oci-image
+    description: Dummy hello-world image.
+    upstream-source: docker.io/hello-world:latest
