@@ -12,23 +12,23 @@ The created Service is named `<app>-lb` in the Juju model namespace.
 
 Deploy:
 
-Deploy one charm per service, don't deploy multiple units.
+Only have one unit per service.
 
 ```bash
-juju deploy loadbalancer-k8s my-service-loadbalancer --resource image=registry.k8s.io/pause:3.9 --trust
+juju deploy loadbalancer-k8s --channel latest/edge --trust
 ```
 
 Example deploy to expose `minio` on port 80:
 
 ```bash
 juju deploy minio
-juju deploy loadbalancer-k8s minio-loadbalancer --resource image=registry.k8s.io/pause:3.9 --config selector="app.kubernetes.io/name=minio" --config target-port=9000 --config lb-port=80 --trust
+juju deploy loadbalancer-k8s minio-loadbalancer --channel latest/edge --config selector="app.kubernetes.io/name=minio" --config target-port=9000 --config lb-port=80 --trust
 ```
 
-Configure it to point at your own pods:
+Configure it to point at your own pods, and optionally set a fixed IP:
 
 ```bash
-juju config loadbalancer-k8s selector="app=myapp" target-port=8080 lb-port=80
+juju config loadbalancer-k8s selector="app=myapp" target-port=8080 lb-port=80 fixed-ip="192.168.10.20"
 ```
 
 Selector can also be provided as JSON:
