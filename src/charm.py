@@ -5,11 +5,13 @@
 """A minimal charm that creates a Kubernetes LoadBalancer Service.
 
 This charm intentionally does not run any workload services.
-It only reconciles a `Service` object based on three config options:
+It only reconciles a `Service` object based on config options:
 
 - `selector`: label selector for backend pods
 - `target-port`: port on the selected pods
 - `lb-port`: external port exposed by the LoadBalancer
+- `fixed-ip`: optional IP assigned to the LoadBalancer
+- `loadbalancer-annotations`: optional annotations applied to the Service
 """
 
 import logging
@@ -46,6 +48,7 @@ class CharmK8SLoadbalancerCharm(ops.CharmBase):
             annotations = charm_k8s_loadbalancer.parse_annotations(
                 str(self.config.get("loadbalancer-annotations", ""))
             )
+            fixed_ip = self.config.get("fixed-ip", "")
             charm_k8s_loadbalancer.ensure_loadbalancer_service(
                 app_name=self.app.name,
                 namespace=self.model.name,
@@ -53,6 +56,7 @@ class CharmK8SLoadbalancerCharm(ops.CharmBase):
                 target_port=target_port,
                 lb_port=lb_port,
                 annotations=annotations,
+                fixed_ip=fixed_ip,
             )
         except charm_k8s_loadbalancer.ConfigError as e:
             logger.error("invalid configuration: %s", e)

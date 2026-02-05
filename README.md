@@ -46,12 +46,20 @@ juju config loadbalancer-k8s selector='{"app":"myapp","tier":"backend"}'
 - `lb-port` (int): port exposed by the LoadBalancer.
 - `loadbalancer-annotations` (string): optional annotations applied to the Service.
 	- Format: `key1=value1,key2=value2`
+- `fixed-ip` (string): optional fixed IPv4/IPv6 address assigned to the Service.
+	- Maps to Kubernetes Service `.spec.loadBalancerIP`.
 
 Example annotations (cloud/provider specific):
 
 ```bash
 juju config loadbalancer-k8s \
 	loadbalancer-annotations="service.beta.kubernetes.io/aws-load-balancer-type=nlb"
+
+Example fixed IP:
+
+```bash
+juju config loadbalancer-k8s fixed-ip=192.0.2.10
+```
 ```
 
 ## Notes

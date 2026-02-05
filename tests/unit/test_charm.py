@@ -26,7 +26,7 @@ def test_non_leader_waits_for_reconcile(monkeypatch: pytest.MonkeyPatch):
 def test_leader_reconciles_service(monkeypatch: pytest.MonkeyPatch):
     captured = {}
 
-    def _ensure(*, app_name, namespace, selector, target_port, lb_port, annotations=None):
+    def _ensure(*, app_name, namespace, selector, target_port, lb_port, annotations=None, fixed_ip=None):
         captured.update(
             {
                 "app_name": app_name,
@@ -35,6 +35,7 @@ def test_leader_reconciles_service(monkeypatch: pytest.MonkeyPatch):
                 "target_port": target_port,
                 "lb_port": lb_port,
                 "annotations": annotations,
+                "fixed_ip": fixed_ip,
             }
         )
 
@@ -59,7 +60,33 @@ def test_leader_reconciles_service(monkeypatch: pytest.MonkeyPatch):
     assert captured["annotations"] == {
         "service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
     }
+    assert captured["fixed_ip"] == ""
     assert isinstance(state_out.unit_status, testing.ActiveStatus)
+
+
+def test_invalid_fixed_ip_blocks(monkeypatch: pytest.MonkeyPatch):
+    from charm import charm_k8s_loadbalancer
+
+    def _ensure(*, fixed_ip=None, **kwargs):
+        # Emulate validation that happens in ensure_loadbalancer_service without
+        # requiring Lightkube.
+        charm_k8s_loadbalancer.parse_fixed_ip(fixed_ip)
+
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", _ensure)
+
+    ctx = testing.Context(CharmK8SLoadbalancerCharm)
+    state_in = testing.State(
+        leader=True,
+        config={
+            "selector": "app=myapp",
+            "target-port": 80,
+            "lb-port": 80,
+            "fixed-ip": "not-an-ip",
+        },
+    )
+
+    state_out = ctx.run(ctx.on.config_changed(), state_in)
+    assert isinstance(state_out.unit_status, testing.BlockedStatus)
 
 
 def test_invalid_selector_blocks(monkeypatch: pytest.MonkeyPatch):

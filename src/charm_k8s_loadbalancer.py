@@ -9,6 +9,7 @@ Kubernetes `Service` of type `LoadBalancer`.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 from dataclasses import dataclass
@@ -128,6 +129,22 @@ def parse_annotations(raw: str) -> dict[str, str]:
     return result
 
 
+def parse_fixed_ip(raw: str | None) -> str | None:
+    """Parse the optional fixed IP config.
+
+    Returns a normalized IP string or None if unset.
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        return str(ipaddress.ip_address(text))
+    except ValueError as e:
+        raise ConfigError("fixed-ip must be a valid IPv4 or IPv6 address") from e
+
+
 @dataclass(frozen=True)
 class ServiceConfig:
     name: str
@@ -136,6 +153,7 @@ class ServiceConfig:
     target_port: int
     lb_port: int
     annotations: dict[str, str]
+    fixed_ip: str | None
 
 
 def _build_service(cfg: ServiceConfig) -> Service:
@@ -157,6 +175,7 @@ def _build_service(cfg: ServiceConfig) -> Service:
         ),
         spec=ServiceSpec(
             type="LoadBalancer",
+            loadBalancerIP=cfg.fixed_ip or None,
             selector=cfg.selector,
             ports=[
                 ServicePort(
@@ -178,6 +197,7 @@ def ensure_loadbalancer_service(
     target_port: int,
     lb_port: int,
     annotations: dict[str, str] | None = None,
+    fixed_ip: str | None = None,
 ) -> None:
     """Create or update the Service for the given config."""
     if not app_name:
@@ -197,6 +217,7 @@ def ensure_loadbalancer_service(
         target_port=target_port,
         lb_port=lb_port,
         annotations=annotations or {},
+        fixed_ip=parse_fixed_ip(fixed_ip),
     )
     svc = _build_service(cfg)
 

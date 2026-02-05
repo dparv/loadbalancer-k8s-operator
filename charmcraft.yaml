@@ -41,6 +41,13 @@ config:
         Format: "key1=value1,key2=value2".
       type: string
       default: ""
+    fixed-ip:
+      description: |
+        Optional fixed IP address to assign to the Kubernetes LoadBalancer Service.
+        If set, this is applied as `.spec.loadBalancerIP`.
+        Must be a valid IPv4 or IPv6 address.
+      type: string
+      default: ""
 
 containers:
   hello-world:
