@@ -1,7 +1,6 @@
 # loadbalancer-k8s-operator
 
-Charmhub package name: loadbalancer-k8s-operator
-More information: https://charmhub.io/loadbalancer-k8s
+Charmhub: https://charmhub.io/loadbalancer-k8s
 
 This charm creates (and keeps in sync) a Kubernetes `Service` of type `LoadBalancer`.
 It does not run any application workload; instead, it points the Service selector at
