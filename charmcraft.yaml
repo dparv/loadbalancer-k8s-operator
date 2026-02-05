@@ -7,6 +7,8 @@ description: |
   matching a specified selector. It allows configuration of the target port
   on the pods and the port to expose the load balancer on.
 
+  Read more about usage on: https://github.com/dparv/loadbalancer-k8s-operator
+
 base: ubuntu@24.04
 platforms:
   amd64:
