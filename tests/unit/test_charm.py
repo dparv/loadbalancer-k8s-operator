@@ -40,6 +40,7 @@ def test_leader_reconciles_service(monkeypatch: pytest.MonkeyPatch):
         )
 
     monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", _ensure)
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.get_loadbalancer_ip", lambda **_: "10.0.0.1")
 
     ctx = testing.Context(CharmK8SLoadbalancerCharm)
     state_in = testing.State(
@@ -62,6 +63,27 @@ def test_leader_reconciles_service(monkeypatch: pytest.MonkeyPatch):
     }
     assert captured["fixed_ip"] == ""
     assert isinstance(state_out.unit_status, testing.ActiveStatus)
+    assert state_out.unit_status.message == "load balancer service ready 10.0.0.1:80"
+
+
+def test_leader_waits_when_ip_not_assigned(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.ensure_loadbalancer_service", lambda **_: None)
+    monkeypatch.setattr("charm.charm_k8s_loadbalancer.get_loadbalancer_ip", lambda **_: None)
+
+    ctx = testing.Context(CharmK8SLoadbalancerCharm)
+    state_in = testing.State(
+        leader=True,
+        config={
+            "selector": "app=myapp",
+            "target-port": 8080,
+            "lb-port": 80,
+        },
+    )
+
+    state_out = ctx.run(ctx.on.config_changed(), state_in)
+
+    assert isinstance(state_out.unit_status, testing.WaitingStatus)
+    assert "IP" in state_out.unit_status.message
 
 
 def test_invalid_fixed_ip_blocks(monkeypatch: pytest.MonkeyPatch):

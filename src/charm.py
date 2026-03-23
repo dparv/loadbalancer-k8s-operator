@@ -67,7 +67,14 @@ class CharmK8SLoadbalancerCharm(ops.CharmBase):
             self.unit.status = BlockedStatus(f"failed to reconcile service: {e}")
             return
 
-        self.unit.status = ActiveStatus("load balancer service ready")
+        lb_ip = charm_k8s_loadbalancer.get_loadbalancer_ip(
+            app_name=self.app.name,
+            namespace=self.model.name,
+        )
+        if lb_ip:
+            self.unit.status = ActiveStatus(f"load balancer service ready {lb_ip}:{lb_port}")
+        else:
+            self.unit.status = WaitingStatus("waiting for load balancer IP assignment")
 
     def _on_remove(self, event: ops.RemoveEvent) -> None:
         if not self.unit.is_leader():

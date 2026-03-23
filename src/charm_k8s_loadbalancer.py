@@ -240,6 +240,34 @@ def ensure_loadbalancer_service(
         logger.info("replaced Service %s/%s", namespace, cfg.name)
 
 
+def get_loadbalancer_ip(*, app_name: str, namespace: str) -> str | None:
+    """Return the assigned LoadBalancer IP (or hostname) from the service status.
+
+    Returns None if the IP has not been assigned yet.
+    """
+    try:
+        from lightkube import Client
+        from lightkube.resources.core_v1 import Service
+    except ModuleNotFoundError:  # pragma: nocover
+        return None
+
+    name = f"{app_name}-lb"
+    client = Client(namespace=namespace, field_manager=app_name)
+    try:
+        svc = client.get(Service, name=name, namespace=namespace)
+    except Exception:
+        return None
+
+    ingress = (
+        svc.status
+        and svc.status.loadBalancer
+        and svc.status.loadBalancer.ingress
+    )
+    if not ingress:
+        return None
+    return ingress[0].ip or ingress[0].hostname or None
+
+
 def delete_loadbalancer_service(*, app_name: str, namespace: str) -> None:
     """Delete the Service if it exists."""
     try:
